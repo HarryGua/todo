@@ -1,2 +1,2 @@
 # todo
-a to do web for my own
+a to do web of my own
