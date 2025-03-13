@@ -10,14 +10,14 @@ import { registerSW } from './pwa';
 registerSW();
 
 // 仅在生产环境中初始化 Sentry
-if (import.meta.env.PROD) {
-  Sentry.init({
-    dsn: import.meta.env.VITE_SENTRY_DSN || "https://examplePublicKey@o0.ingest.sentry.io/0",
-    integrations: [new BrowserTracing()],
-    tracesSampleRate: 1.0, // 生产环境中应该降低这个值，例如 0.2
-    environment: import.meta.env.MODE,
-  });
-}
+// if (import.meta.env.PROD) {
+//   Sentry.init({
+//     dsn: import.meta.env.VITE_SENTRY_DSN || "https://examplePublicKey@o0.ingest.sentry.io/0",
+//     integrations: [new BrowserTracing()],
+//     tracesSampleRate: 1.0, // 生产环境中应该降低这个值，例如 0.2
+//     environment: import.meta.env.MODE,
+//   });
+// }
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
