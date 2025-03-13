@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import '../styles/Timer.css';
+import { pomodoroAPI } from '../services/api';
 
 function Timer() {
   // 定义不同模式的时间（以秒为单位）
@@ -46,6 +47,7 @@ function Timer() {
     shortBreak: initialSettings.shortBreakTime / 60,
     longBreak: initialSettings.longBreakTime / 60
   });
+  const [apiError, setApiError] = useState('');
 
   // 引用当前模式的总时间
   const totalTimeRef = useRef(initialSettings.pomodoroTime);
@@ -68,7 +70,7 @@ function Timer() {
   };
 
   // 添加历史记录
-  const addHistoryEntry = (type) => {
+  const addHistoryEntry = async (type) => {
     const newEntry = {
       type,
       date: new Date().toISOString(),
@@ -76,13 +78,44 @@ function Timer() {
                 type === 'shortBreak' ? customTimes.shortBreak : customTimes.longBreak
     };
     
+    // 添加到本地历史记录
     setHistory(prevHistory => [...prevHistory, newEntry]);
+    
+    // 保存到后端
+    try {
+      await pomodoroAPI.create({
+        type,
+        duration: newEntry.duration,
+        notes: ''
+      });
+    } catch (error) {
+      console.error('保存 Pomodoro 记录失败:', error);
+      setApiError('保存记录失败，但您可以继续使用应用');
+      
+      // 3秒后清除错误消息
+      setTimeout(() => {
+        setApiError('');
+      }, 3000);
+    }
   };
 
   // 清除历史记录
-  const clearHistory = () => {
+  const clearHistory = async () => {
     setHistory([]);
     setCycles(0);
+    
+    // 从后端清除记录
+    try {
+      await pomodoroAPI.clearAll();
+    } catch (error) {
+      console.error('清除 Pomodoro 记录失败:', error);
+      setApiError('清除记录失败，请稍后再试');
+      
+      // 3秒后清除错误消息
+      setTimeout(() => {
+        setApiError('');
+      }, 3000);
+    }
   };
 
   // 请求通知权限
@@ -320,6 +353,8 @@ function Timer() {
 
   return (
     <div className="timer-container">
+      {apiError && <div className="api-error">{apiError}</div>}
+      
       <div className="timer-modes">
         <button 
           className={`mode-button ${mode === 'pomodoro' ? 'active' : ''}`} 

@@ -14,9 +14,14 @@ body {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-  max-width: 800px;
+}
+
+.app-content {
+  flex: 1;
+  max-width: 1200px;
   margin: 0 auto;
   padding: 1rem;
+  width: 100%;
 }
 
 .app-header {
@@ -48,6 +53,8 @@ main {
   margin-top: 2rem;
   color: #777;
   font-size: 0.9rem;
+  background-color: #fff;
+  box-shadow: 0 -2px 4px rgba(0, 0, 0, 0.05);
 }
 
 #root {
@@ -91,4 +98,30 @@ main {
 
 .read-the-docs {
   color: #888;
+}
+
+.loading {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 80vh;
+  font-size: 1.2rem;
+  color: #666;
+}
+
+.loading::after {
+  content: '';
+  width: 1.2rem;
+  height: 1.2rem;
+  margin-left: 0.5rem;
+  border: 2px solid #e74c3c;
+  border-radius: 50%;
+  border-top-color: transparent;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
