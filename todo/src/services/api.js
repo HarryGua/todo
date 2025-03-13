@@ -1,8 +1,11 @@
 import axios from 'axios';
 
+// 获取 API URL 环境变量，如果不存在则使用默认值
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+
 // 创建 axios 实例
 const api = axios.create({
-  baseURL: 'http://localhost:5000/api',
+  baseURL: API_URL,
   headers: {
     'Content-Type': 'application/json'
   }
