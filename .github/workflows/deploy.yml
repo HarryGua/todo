@@ -1,0 +1,61 @@
+name: Deploy Pomodoro App
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Set up Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '18'
+        cache: 'npm'
+    
+    # 前端测试和构建
+    - name: Install frontend dependencies
+      run: |
+        cd todo
+        npm ci
+    
+    - name: Lint frontend
+      run: |
+        cd todo
+        npm run lint
+    
+    - name: Build frontend
+      run: |
+        cd todo
+        npm run build
+    
+    # 后端测试
+    - name: Install backend dependencies
+      run: |
+        cd server
+        npm ci
+    
+    # 部署到 Render (仅在 main 分支上)
+    - name: Deploy to Render
+      if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+      run: |
+        curl -s "https://api.render.com/deploy/srv-${{ secrets.RENDER_SERVICE_ID }}?key=${{ secrets.RENDER_API_KEY }}"
+      
+    # 部署前端到 Netlify (仅在 main 分支上)
+    - name: Deploy frontend to Netlify
+      if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+      uses: nwtgck/actions-netlify@v2
+      with:
+        publish-dir: './todo/dist'
+        production-branch: main
+        github-token: ${{ secrets.GITHUB_TOKEN }}
+        deploy-message: "Deploy from GitHub Actions"
+      env:
+        NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+        NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }} 

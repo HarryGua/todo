@@ -5,6 +5,8 @@ const dotenv = require('dotenv');
 const path = require('path');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
+const Sentry = require('@sentry/node');
+const { ProfilingIntegration } = require('@sentry/profiling-node');
 const userRoutes = require('./routes/userRoutes');
 const pomodoroRoutes = require('./routes/pomodoroRoutes');
 const errorHandler = require('./middleware/errorHandler');
@@ -16,6 +18,26 @@ dotenv.config({
 
 // 创建 Express 应用
 const app = express();
+
+// 初始化 Sentry (仅在生产环境)
+if (process.env.NODE_ENV === 'production') {
+  Sentry.init({
+    dsn: process.env.SENTRY_DSN || "https://examplePublicKey@o0.ingest.sentry.io/0",
+    integrations: [
+      new Sentry.Integrations.Http({ tracing: true }),
+      new Sentry.Integrations.Express({ app }),
+      new ProfilingIntegration(),
+    ],
+    tracesSampleRate: 1.0, // 生产环境中应该降低这个值，例如 0.2
+    profilesSampleRate: 1.0, // 生产环境中应该降低这个值，例如 0.2
+    environment: process.env.NODE_ENV,
+  });
+
+  // Sentry 请求处理必须在其他中间件之前
+  app.use(Sentry.Handlers.requestHandler());
+  // Sentry 跟踪中间件必须在所有控制器之前
+  app.use(Sentry.Handlers.tracingHandler());
+}
 
 // 安全中间件
 app.use(helmet()); // 添加各种 HTTP 头以增强安全性
@@ -80,6 +102,11 @@ if (process.env.NODE_ENV === 'production') {
   app.get('/', (req, res) => {
     res.json({ message: 'Pomodoro API 服务器运行中' });
   });
+}
+
+// Sentry 错误处理中间件必须在所有控制器之后，但在其他错误中间件之前
+if (process.env.NODE_ENV === 'production') {
+  app.use(Sentry.Handlers.errorHandler());
 }
 
 // 错误处理中间件

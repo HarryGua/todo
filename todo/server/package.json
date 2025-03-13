@@ -12,6 +12,9 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
+    "@sentry/node": "^9.5.0",
+    "@sentry/react": "^9.5.0",
+    "@sentry/tracing": "^7.120.3",
     "bcryptjs": "^2.4.3",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
