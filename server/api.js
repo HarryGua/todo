@@ -18,12 +18,10 @@ app.use(cors({
 }));
 
 // 导入路由
-const authRoutes = require('./routes/auth');
-const userRoutes = require('./routes/users');
-const pomodoroRoutes = require('./routes/pomodoros');
+const userRoutes = require('./routes/userRoutes');
+const pomodoroRoutes = require('./routes/pomodoroRoutes');
 
 // API 路由
-app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/pomodoros', pomodoroRoutes);
 
