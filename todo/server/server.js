@@ -2,7 +2,6 @@ const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
 const dotenv = require('dotenv');
-const path = require('path');
 
 // 导入路由
 const authRoutes = require('./routes/auth');
@@ -29,12 +28,6 @@ app.get('/', (req, res) => {
   res.send('Pomodoro API 正在运行');
 });
 
-// 注释掉静态文件服务
-// app.use(express.static(path.join(__dirname, '../todo/dist')));
-// app.get('*', (req, res) => {
-//   res.sendFile(path.join(__dirname, '../todo/dist/index.html'));
-// });
-
 // 错误处理中间件
 app.use((err, req, res, next) => {
   console.error(err.stack);
@@ -42,6 +35,8 @@ app.use((err, req, res, next) => {
 });
 
 // 连接到 MongoDB
+console.log('尝试连接到 MongoDB:', process.env.MONGODB_URI.replace(/:[^:]*@/, ':****@'));
+
 mongoose.connect(process.env.MONGODB_URI)
   .then(() => {
     console.log('已连接到 MongoDB');
@@ -49,11 +44,12 @@ mongoose.connect(process.env.MONGODB_URI)
     // 启动服务器
     const PORT = process.env.PORT || 5000;
     app.listen(PORT, () => {
-      console.log(`服务器正在端口 ${PORT} 上运行`);
+      console.log(`服务器运行在端口 ${PORT}，环境: ${process.env.NODE_ENV}`);
     });
   })
   .catch(err => {
-    console.error('连接到 MongoDB 失败:', err.message);
+    console.error('MongoDB 连接失败:', err.message);
+    console.error('错误详情:', err);
     process.exit(1);
   });
 
