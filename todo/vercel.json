@@ -6,6 +6,6 @@
   "outputDirectory": "dist",
   "framework": "vite",
   "env": {
-    "VITE_API_URL": "https://pomodoro-api.onrender.com/api"
+    "VITE_API_URL": "https://todo-me8t.onrender.com"
   }
 } 
