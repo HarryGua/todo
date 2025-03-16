@@ -1,7 +1,7 @@
 import axios from 'axios';
 
-// 获取 API URL 环境变量，如果不存在则使用默认值
-const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+// 硬编码 API URL，确保使用正确的 URL
+const BASE_URL = 'https://todo-me8t.onrender.com';
 
 // 确保 BASE_URL 不以斜杠结尾
 const normalizedBaseUrl = BASE_URL.endsWith('/') 
