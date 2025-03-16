@@ -1,18 +1,18 @@
 import axios from 'axios';
 
 // 获取 API URL 环境变量，如果不存在则使用默认值
-// 确保 API URL 以 /api 结尾
-let baseURL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-if (!baseURL.endsWith('/api')) {
-  baseURL = baseURL + '/api';
-}
-const API_URL = baseURL;
+const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
-console.log('API 基础 URL:', API_URL);
+// 确保 BASE_URL 不以斜杠结尾
+const normalizedBaseUrl = BASE_URL.endsWith('/') 
+  ? BASE_URL.slice(0, -1) 
+  : BASE_URL;
+
+console.log('API 基础 URL:', normalizedBaseUrl);
 
 // 创建 axios 实例
 const api = axios.create({
-  baseURL: API_URL,
+  baseURL: normalizedBaseUrl,
   headers: {
     'Content-Type': 'application/json'
   }
@@ -100,7 +100,8 @@ export const userAPI = {
       });
     }
     
-    return api.post('/users/register', userData);
+    // 使用完整的 URL 路径
+    return api.post('/api/users/register', userData);
   },
   
   // 登录
