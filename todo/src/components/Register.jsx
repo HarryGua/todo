@@ -76,6 +76,7 @@ function Register() {
     
     setIsLoading(true);
     console.log('开始发送注册请求...');
+    console.log('API URL:', import.meta.env.VITE_API_URL);
     
     try {
       // 调用注册 API

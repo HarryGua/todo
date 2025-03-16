@@ -8,6 +8,8 @@ if (!baseURL.endsWith('/api')) {
 }
 const API_URL = baseURL;
 
+console.log('API 基础 URL:', API_URL);
+
 // 创建 axios 实例
 const api = axios.create({
   baseURL: API_URL,
@@ -23,6 +25,7 @@ api.interceptors.request.use(
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
+    console.log('发送请求:', config.method.toUpperCase(), config.baseURL + config.url);
     return config;
   },
   (error) => {
