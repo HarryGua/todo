@@ -1,7 +1,12 @@
 import axios from 'axios';
 
 // 获取 API URL 环境变量，如果不存在则使用默认值
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+// 确保 API URL 以 /api 结尾
+let baseURL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+if (!baseURL.endsWith('/api')) {
+  baseURL = baseURL + '/api';
+}
+const API_URL = baseURL;
 
 // 创建 axios 实例
 const api = axios.create({
