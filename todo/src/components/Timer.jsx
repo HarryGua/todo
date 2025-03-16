@@ -48,6 +48,12 @@ function Timer() {
     longBreak: initialSettings.longBreakTime / 60
   });
   const [apiError, setApiError] = useState('');
+  
+  // 新增状态和引用
+  const [lastActiveTime, setLastActiveTime] = useState(null);
+  const timerInterval = useRef(null);
+  const [swRegistration, setSwRegistration] = useState(null);
+  const timerId = useRef(`timer-${Date.now()}`);
 
   // 引用当前模式的总时间
   const totalTimeRef = useRef(initialSettings.pomodoroTime);
@@ -67,6 +73,19 @@ function Timer() {
     } catch (e) {
       console.error('保存设置失败:', e);
     }
+  };
+  
+  // 保存计时器状态到 localStorage
+  const saveTimerState = (currentTime = null) => {
+    const state = {
+      isRunning,
+      mode,
+      timeLeft,
+      progress,
+      lastActiveTime: currentTime || lastActiveTime,
+      totalTime: totalTimeRef.current
+    };
+    localStorage.setItem('timerState', JSON.stringify(state));
   };
 
   // 添加历史记录
@@ -145,34 +164,40 @@ function Timer() {
   // 播放提示音
   const playAlertSound = () => {
     try {
-      const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-      const oscillator = audioContext.createOscillator();
-      const gainNode = audioContext.createGain();
-      
-      oscillator.connect(gainNode);
-      gainNode.connect(audioContext.destination);
-      
-      oscillator.type = 'sine';
-      oscillator.frequency.value = 800;
-      gainNode.gain.value = 0.5;
-      
-      oscillator.start();
-      
-      // 0.1秒后停止
-      setTimeout(() => {
-        oscillator.stop();
-        // 播放第二个音调
-        const oscillator2 = audioContext.createOscillator();
-        oscillator2.connect(gainNode);
-        oscillator2.type = 'sine';
-        oscillator2.frequency.value = 600;
-        oscillator2.start();
+      // 尝试加载并播放通知音效
+      const audio = new Audio('/sounds/notification.mp3');
+      audio.play().catch(e => {
+        console.error("播放音频文件失败:", e);
+        // 回退到生成音频
+        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        const oscillator = audioContext.createOscillator();
+        const gainNode = audioContext.createGain();
+        
+        oscillator.connect(gainNode);
+        gainNode.connect(audioContext.destination);
+        
+        oscillator.type = 'sine';
+        oscillator.frequency.value = 800;
+        gainNode.gain.value = 0.5;
+        
+        oscillator.start();
         
         // 0.1秒后停止
         setTimeout(() => {
-          oscillator2.stop();
+          oscillator.stop();
+          // 播放第二个音调
+          const oscillator2 = audioContext.createOscillator();
+          oscillator2.connect(gainNode);
+          oscillator2.type = 'sine';
+          oscillator2.frequency.value = 600;
+          oscillator2.start();
+          
+          // 0.1秒后停止
+          setTimeout(() => {
+            oscillator2.stop();
+          }, 100);
         }, 100);
-      }, 100);
+      });
     } catch (e) {
       console.error("播放音频失败:", e);
     }
@@ -187,6 +212,14 @@ function Timer() {
 
   // 切换模式
   const switchMode = (newMode) => {
+    // 如果有 Service Worker 正在运行计时器，停止它
+    if (swRegistration && isRunning) {
+      swRegistration.active.postMessage({
+        action: 'STOP_TIMER',
+        timerId: timerId.current
+      });
+    }
+    
     setIsRunning(false);
     setMode(newMode);
     
@@ -208,21 +241,59 @@ function Timer() {
     setTimeLeft(newTime);
     totalTimeRef.current = newTime;
     setProgress(100); // 重置进度条
+    
+    // 保存状态变化
+    setTimeout(() => saveTimerState(), 0);
   };
 
   // 开始计时器
   const startTimer = () => {
     setIsRunning(true);
+    setLastActiveTime(Date.now());
+    
+    // 使用 Service Worker 进行计时（如果可用）
+    if (swRegistration) {
+      swRegistration.active.postMessage({
+        action: 'START_TIMER',
+        timerId: timerId.current,
+        duration: timeLeft,
+        timestamp: Date.now()
+      });
+    }
+    
+    // 保存状态变化
+    setTimeout(() => saveTimerState(Date.now()), 0);
   };
 
   // 暂停计时器
   const pauseTimer = () => {
     setIsRunning(false);
+    setLastActiveTime(null);
+    
+    // 如果有 Service Worker 正在运行计时器，暂停它
+    if (swRegistration) {
+      swRegistration.active.postMessage({
+        action: 'PAUSE_TIMER',
+        timerId: timerId.current
+      });
+    }
+    
+    // 保存状态变化
+    setTimeout(() => saveTimerState(), 0);
   };
 
   // 重置计时器
   const resetTimer = () => {
     setIsRunning(false);
+    setLastActiveTime(null);
+    
+    // 如果有 Service Worker 正在运行计时器，停止它
+    if (swRegistration) {
+      swRegistration.active.postMessage({
+        action: 'STOP_TIMER',
+        timerId: timerId.current
+      });
+    }
     
     let newTime;
     switch(mode) {
@@ -241,6 +312,9 @@ function Timer() {
     
     setTimeLeft(newTime);
     setProgress(100); // 重置进度条
+    
+    // 保存状态变化
+    setTimeout(() => saveTimerState(), 0);
   };
 
   // 处理计时结束
@@ -279,6 +353,9 @@ function Timer() {
       );
       switchMode('pomodoro');
     }
+    
+    // 保存状态变化
+    setTimeout(() => saveTimerState(), 0);
   };
 
   // 更新自定义时间
@@ -316,28 +393,192 @@ function Timer() {
     
     // 隐藏设置面板
     setShowSettings(false);
+    
+    // 保存状态变化
+    setTimeout(() => saveTimerState(), 0);
   };
+  
+  // 处理页面可见性变化
+  const handleVisibilityChange = () => {
+    if (document.visibilityState === 'hidden') {
+      // 页面隐藏时保存当前时间
+      if (isRunning) {
+        setLastActiveTime(Date.now());
+        saveTimerState(Date.now());
+      }
+    } else {
+      // 页面可见时恢复计时
+      if (isRunning && lastActiveTime) {
+        // 如果使用 Service Worker，从 Service Worker 获取剩余时间
+        if (swRegistration) {
+          const messageChannel = new MessageChannel();
+          messageChannel.port1.onmessage = (event) => {
+            const { remainingTime } = event.data;
+            if (remainingTime <= 0) {
+              handleTimerComplete();
+            } else {
+              setTimeLeft(remainingTime);
+              setProgress((remainingTime / totalTimeRef.current) * 100);
+            }
+          };
+          
+          swRegistration.active.postMessage({
+            action: 'GET_REMAINING_TIME',
+            timerId: timerId.current
+          }, [messageChannel.port2]);
+        } else {
+          // 否则使用本地时间计算
+          const now = Date.now();
+          const elapsedSeconds = Math.floor((now - lastActiveTime) / 1000);
+          
+          if (elapsedSeconds >= timeLeft) {
+            // 计时结束
+            handleTimerComplete();
+          } else {
+            // 更新剩余时间
+            setTimeLeft(prevTime => Math.max(0, prevTime - elapsedSeconds));
+            // 更新进度条
+            const newProgress = ((timeLeft - elapsedSeconds) / totalTimeRef.current) * 100;
+            setProgress(Math.max(0, newProgress));
+            // 更新最后活动时间
+            setLastActiveTime(now);
+          }
+        }
+      }
+    }
+  };
+
+  // 初始化时从 localStorage 加载状态
+  useEffect(() => {
+    // 初始化 Service Worker
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.ready.then(registration => {
+        setSwRegistration(registration);
+        
+        // 监听来自 Service Worker 的消息
+        navigator.serviceWorker.addEventListener('message', event => {
+          if (event.data.action === 'TIMER_COMPLETE' && event.data.timerId === timerId.current) {
+            handleTimerComplete();
+          }
+        });
+      });
+    }
+    
+    // 加载保存的计时器状态
+    const savedTimerState = JSON.parse(localStorage.getItem('timerState'));
+    if (savedTimerState) {
+      // 如果计时器正在运行，计算离开后经过的时间
+      if (savedTimerState.isRunning && savedTimerState.lastActiveTime) {
+        const now = Date.now();
+        const elapsedSeconds = Math.floor((now - savedTimerState.lastActiveTime) / 1000);
+        
+        // 如果计时器应该已经结束
+        if (elapsedSeconds >= savedTimerState.timeLeft) {
+          // 添加一条完成的记录
+          if (savedTimerState.mode === 'pomodoro') {
+            // 增加完成的番茄钟次数
+            setCycles(prevCycles => prevCycles + 1);
+            
+            // 添加历史记录
+            addHistoryEntry('pomodoro');
+          } else {
+            // 添加休息记录
+            addHistoryEntry(savedTimerState.mode);
+          }
+          
+          // 重置计时器状态
+          setIsRunning(false);
+          setMode(savedTimerState.mode === 'pomodoro' ? 
+            (cycles % 4 === 3 ? 'longBreak' : 'shortBreak') : 
+            'pomodoro');
+          
+          // 设置新模式的时间
+          const newMode = savedTimerState.mode === 'pomodoro' ? 
+            (cycles % 4 === 3 ? 'longBreak' : 'shortBreak') : 
+            'pomodoro';
+          
+          let newTime;
+          switch(newMode) {
+            case 'pomodoro':
+              newTime = customTimes.pomodoro * 60;
+              break;
+            case 'shortBreak':
+              newTime = customTimes.shortBreak * 60;
+              break;
+            case 'longBreak':
+              newTime = customTimes.longBreak * 60;
+              break;
+            default:
+              newTime = customTimes.pomodoro * 60;
+          }
+          
+          setTimeLeft(newTime);
+          totalTimeRef.current = newTime;
+          setProgress(100);
+        } else {
+          // 继续计时，减去已经过去的时间
+          setIsRunning(savedTimerState.isRunning);
+          setMode(savedTimerState.mode);
+          setTimeLeft(savedTimerState.timeLeft - elapsedSeconds);
+          setLastActiveTime(now);
+          totalTimeRef.current = savedTimerState.totalTime;
+          
+          // 更新进度条
+          const newProgress = ((savedTimerState.timeLeft - elapsedSeconds) / savedTimerState.totalTime) * 100;
+          setProgress(Math.max(0, newProgress));
+        }
+      } else {
+        // 恢复保存的状态
+        setIsRunning(savedTimerState.isRunning);
+        setMode(savedTimerState.mode);
+        setTimeLeft(savedTimerState.timeLeft);
+        setProgress(savedTimerState.progress);
+        totalTimeRef.current = savedTimerState.totalTime;
+      }
+    }
+    
+    // 添加页面可见性变化事件监听
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      clearInterval(timerInterval.current);
+      
+      // 如果有 Service Worker 正在运行计时器，停止它
+      if (swRegistration && isRunning) {
+        swRegistration.active.postMessage({
+          action: 'STOP_TIMER',
+          timerId: timerId.current
+        });
+      }
+    };
+  }, []);
 
   // 使用 useEffect 处理计时器逻辑
   useEffect(() => {
     let interval = null;
     
     if (isRunning && timeLeft > 0) {
-      interval = setInterval(() => {
-        setTimeLeft((prevTime) => {
-          const newTime = prevTime - 1;
-          // 更新进度条
-          setProgress((newTime / totalTimeRef.current) * 100);
-          return newTime;
-        });
-      }, 1000);
+      // 如果没有使用 Service Worker，使用本地计时器
+      if (!swRegistration) {
+        interval = setInterval(() => {
+          setTimeLeft((prevTime) => {
+            const newTime = prevTime - 1;
+            // 更新进度条
+            setProgress((newTime / totalTimeRef.current) * 100);
+            return newTime;
+          });
+        }, 1000);
+        
+        timerInterval.current = interval;
+      }
     } else if (isRunning && timeLeft === 0) {
       setIsRunning(false);
       handleTimerComplete();
     }
 
     return () => clearInterval(interval);
-  }, [isRunning, timeLeft]);
+  }, [isRunning, timeLeft, swRegistration]);
 
   // 检查通知权限
   useEffect(() => {
@@ -350,6 +591,13 @@ function Timer() {
   useEffect(() => {
     saveToLocalStorage();
   }, [cycles, history, customTimes]);
+  
+  // 当计时器状态变化时，保存到本地存储
+  useEffect(() => {
+    if (isRunning || timeLeft !== totalTimeRef.current) {
+      saveTimerState();
+    }
+  }, [isRunning, timeLeft, mode, progress]);
 
   return (
     <div className="timer-container">
