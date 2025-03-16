@@ -134,7 +134,8 @@ export const userAPI = {
       }
     }
     
-    return api.post('/users/login', credentials);
+    // 使用完整的 URL 路径
+    return api.post('/api/users/login', credentials);
   },
   
   // 获取用户信息
@@ -157,7 +158,8 @@ export const userAPI = {
       }
     }
     
-    return api.get('/users/profile');
+    // 使用完整的 URL 路径
+    return api.get('/api/users/profile');
   },
   
   // 更新用户信息
@@ -196,7 +198,8 @@ export const userAPI = {
       }
     }
     
-    return api.put('/users/profile', userData);
+    // 使用完整的 URL 路径
+    return api.put('/api/users/profile', userData);
   }
 };
 
@@ -232,7 +235,8 @@ export const pomodoroAPI = {
       }
     }
     
-    return api.post('/pomodoros', data);
+    // 使用完整的 URL 路径
+    return api.post('/api/pomodoros', data);
   },
   
   // 获取所有 Pomodoro 记录
@@ -258,7 +262,8 @@ export const pomodoroAPI = {
       }
     }
     
-    return api.get('/pomodoros');
+    // 使用完整的 URL 路径
+    return api.get('/api/pomodoros');
   },
   
   // 获取统计信息
@@ -320,7 +325,8 @@ export const pomodoroAPI = {
       }
     }
     
-    return api.get('/pomodoros/stats');
+    // 使用完整的 URL 路径
+    return api.get('/api/pomodoros/stats');
   },
   
   // 删除 Pomodoro 记录
@@ -360,7 +366,8 @@ export const pomodoroAPI = {
       }
     }
     
-    return api.delete(`/pomodoros/${id}`);
+    // 使用完整的 URL 路径
+    return api.delete(`/api/pomodoros/${id}`);
   },
   
   // 清除所有 Pomodoro 记录
@@ -393,7 +400,8 @@ export const pomodoroAPI = {
       }
     }
     
-    return api.delete('/pomodoros');
+    // 使用完整的 URL 路径
+    return api.delete('/api/pomodoros');
   }
 };
 
